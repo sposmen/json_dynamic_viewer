@@ -2,6 +2,8 @@
 
 A React library for rendering arbitrarily deep JSON with per-key configurable display behaviors and value formatting. Users expand nodes on demand, choose how each key is visualized, rename labels, and export the entire configuration for reuse.
 
+**[Live demo →](https://www.jaime-giraldo.com/json_dynamic_viewer/)**
+
 ## Installation
 
 ```bash
