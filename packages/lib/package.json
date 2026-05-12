@@ -1,0 +1,35 @@
+{
+  "name": "json-dynamic-viewer",
+  "version": "0.1.0",
+  "description": "A dynamic, configurable JSON viewer library for React with per-key behavior and formatting",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": ["dist"],
+  "sideEffects": ["./dist/style.css"],
+  "keywords": ["react", "json", "viewer", "json-viewer", "dynamic", "tabulator"],
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "tabulator-tables": "^6.3.0"
+  }
+}
