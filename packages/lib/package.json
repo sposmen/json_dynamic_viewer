@@ -1,6 +1,6 @@
 {
   "name": "json-dynamic-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A dynamic, configurable JSON viewer library for React with per-key behavior and formatting",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -12,9 +12,29 @@
     },
     "./style.css": "./dist/style.css"
   },
-  "files": ["dist"],
-  "sideEffects": ["./dist/style.css"],
-  "keywords": ["react", "json", "viewer", "json-viewer", "dynamic", "tabulator"],
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "./dist/style.css"
+  ],
+  "author": "Jaime Giraldo",
+  "homepage": "https://www.jaime-giraldo.com/json_dynamic_viewer/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sposmen/json_dynamic_viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sposmen/json_dynamic_viewer/issues"
+  },
+  "keywords": [
+    "react",
+    "json",
+    "viewer",
+    "json-viewer",
+    "dynamic",
+    "tabulator"
+  ],
   "license": "MIT",
   "scripts": {
     "build": "vite build",

@@ -9,6 +9,9 @@
     "dev": "npm run dev --workspace=packages/demo",
     "build:lib": "npm run build --workspace=packages/lib",
     "build:demo": "npm run build --workspace=packages/demo",
-    "build": "npm run build:lib && npm run build:demo"
+    "build": "npm run build:lib && npm run build:demo",
+    "release:patch": "npm version patch --workspace=packages/lib && npm publish --workspace=packages/lib",
+    "release:minor": "npm version minor --workspace=packages/lib && npm publish --workspace=packages/lib",
+    "release:major": "npm version major --workspace=packages/lib && npm publish --workspace=packages/lib"
   }
 }

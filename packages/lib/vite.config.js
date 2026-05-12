@@ -13,7 +13,7 @@ export default defineConfig({
       cssFileName: 'style',
     },
     rollupOptions: {
-      external: ['react', 'react-dom'],
+      external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
     },
     cssCodeSplit: false,
   },
