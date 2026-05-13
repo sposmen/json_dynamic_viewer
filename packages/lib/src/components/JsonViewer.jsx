@@ -5,7 +5,7 @@ import { createConfig, setKeyConfig } from '../config.js';
 import { themes } from '../themes.js';
 import '../styles.css';
 
-export default function JsonViewer({ data, config: externalConfig, onConfigChange, theme, configurable = true, path: pathPrefix }) {
+export default function JsonViewer({ data, config: externalConfig, onConfigChange, theme, configurable = true, path: pathPrefix, plugins = {} }) {
   const parentCtx = useContext(ViewerContext);
   const isConnected = Boolean(parentCtx && pathPrefix !== undefined);
 
@@ -13,6 +13,7 @@ export default function JsonViewer({ data, config: externalConfig, onConfigChang
 
   const config = isConnected ? parentCtx.config : (externalConfig ?? internalConfig);
   const effectiveConfigurable = isConnected ? parentCtx.configurable : configurable;
+  const effectivePlugins = isConnected ? parentCtx.plugins : plugins;
 
   const parsed = useMemo(() => {
     if (typeof data === 'string') {
@@ -44,7 +45,8 @@ export default function JsonViewer({ data, config: externalConfig, onConfigChang
     configurable: effectiveConfigurable,
     onConfigChange: handleConfigChange,
     renderNode,
-  }), [config, effectiveConfigurable, handleConfigChange, renderNode]);
+    plugins: effectivePlugins,
+  }), [config, effectiveConfigurable, handleConfigChange, renderNode, effectivePlugins]);
 
   const themeVars = useMemo(() => {
     if (!theme) return {};

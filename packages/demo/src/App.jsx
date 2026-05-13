@@ -1,6 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
-import { JsonViewer, exportConfig, importConfig, preAnalyze, themes } from 'json-dynamic-viewer';
+import { JsonViewer, NativeTableAdapter, exportConfig, importConfig, preAnalyze, themes } from 'json-dynamic-viewer';
+import { createTabulatorAdapter } from 'json-dynamic-viewer/adapters/tabulator';
+import simpleTheme   from 'json-dynamic-viewer/adapters/tabulator/themes/simple';
+import midnightTheme from 'json-dynamic-viewer/adapters/tabulator/themes/midnight';
+import modernTheme   from 'json-dynamic-viewer/adapters/tabulator/themes/modern';
+import siteTheme     from 'json-dynamic-viewer/adapters/tabulator/themes/site';
+import siteDarkTheme from 'json-dynamic-viewer/adapters/tabulator/themes/site-dark';
+import { createGridJsAdapter } from 'json-dynamic-viewer/adapters/gridjs';
+import mermaidTheme  from 'json-dynamic-viewer/adapters/gridjs/themes/mermaid';
 import { sampleJson } from './sampleData.js';
+
+const tabulatorAdapter = createTabulatorAdapter({
+  themes: [simpleTheme, midnightTheme, modernTheme, siteTheme, siteDarkTheme],
+});
+
+const gridJsAdapter = createGridJsAdapter({ themes: [mermaidTheme] });
+
+const TABLE_ADAPTERS = {
+  tabulator: tabulatorAdapter,
+  gridjs:    gridJsAdapter,
+  native:    NativeTableAdapter,
+};
+
+const ADAPTER_LABELS = {
+  tabulator: 'Tabulator',
+  gridjs:    'Grid.js',
+  native:    'Native HTML',
+};
 
 const PRESET_LABELS = {
   default: '☀ Default',
@@ -25,6 +51,9 @@ export default function App() {
   const [parseError, setParseError]   = useState(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [configurable, setConfigurable] = useState(true);
+
+  // Table adapter state
+  const [tableAdapterKey, setTableAdapterKey] = useState('tabulator');
 
   // Theme state
   const [preset, setPreset]           = useState('default');
@@ -299,6 +328,21 @@ export default function App() {
             )}
 
             <button onClick={handleExportTheme} style={btn('#555')}>Export Theme</button>
+
+            <span style={{ marginLeft: 8, fontSize: 11, color: panelText, fontWeight: 'bold' }}>Table:</span>
+            {Object.keys(ADAPTER_LABELS).map((key) => (
+              <button
+                key={key}
+                onClick={() => setTableAdapterKey(key)}
+                style={{
+                  ...btn(tableAdapterKey === key ? '#7c3aed' : '#888'),
+                  outline: tableAdapterKey === key ? '2px solid #7c3aed' : 'none',
+                  outlineOffset: 1,
+                }}
+              >
+                {ADAPTER_LABELS[key]}
+              </button>
+            ))}
           </div>
 
           {/* Custom var editor */}
@@ -358,6 +402,7 @@ export default function App() {
               onConfigChange={setConfig}
               theme={theme}
               configurable={configurable}
+              plugins={{ table: TABLE_ADAPTERS[tableAdapterKey] }}
             />
           </div>
         </div>

@@ -23,6 +23,20 @@ Import the stylesheet once — typically in your app's root file:
 import 'json-dynamic-viewer/style.css';
 ```
 
+### Table adapter peer dependencies
+
+Table rendering is **opt-in**. Install only the library you actually use:
+
+```bash
+# Tabulator adapter
+npm install tabulator-tables
+
+# Grid.js adapter
+npm install gridjs gridjs-react
+```
+
+If neither is installed, arrays-of-objects render using the built-in native HTML table. No errors, no unused code in your bundle.
+
 ## Basic usage
 
 ```jsx
@@ -328,6 +342,57 @@ Config keys for the nested viewer are stored as `"settings.connection.host"`, `"
 
 ---
 
+### 9 — Table adapters (Tabulator and Grid.js)
+
+Pass a table adapter via `plugins` to enable table rendering for arrays-of-objects. Only the themes you import appear as style options.
+
+```jsx
+import { JsonViewer, BEHAVIORS, FORMATS, createConfig, setKeyConfig } from 'json-dynamic-viewer';
+import { createTabulatorAdapter } from 'json-dynamic-viewer/adapters/tabulator';
+import simpleTheme   from 'json-dynamic-viewer/adapters/tabulator/themes/simple';
+import midnightTheme from 'json-dynamic-viewer/adapters/tabulator/themes/midnight';
+import 'json-dynamic-viewer/style.css';
+
+const tableAdapter = createTabulatorAdapter({
+  themes: [simpleTheme, midnightTheme],
+});
+
+const data = {
+  employees: [
+    { name: 'Alice', dept: 'Engineering', salary: 120000, joined: 1609459200 },
+    { name: 'Bob',   dept: 'Marketing',   salary: 95000,  joined: 1625097600 },
+  ],
+};
+
+let config = createConfig();
+config = setKeyConfig(config, 'employees',        { behavior: BEHAVIORS.TABLE, tableTheme: 'simple' });
+config = setKeyConfig(config, 'employees.salary', { format: FORMATS.CURRENCY, formatOptions: { currency: 'USD' } });
+config = setKeyConfig(config, 'employees.joined', { format: FORMATS.DATETIME });
+
+export default function App() {
+  return (
+    <JsonViewer
+      data={data}
+      config={config}
+      plugins={{ table: tableAdapter }}
+    />
+  );
+}
+```
+
+To use Grid.js instead, swap the adapter import — the rest of your code stays the same:
+
+```jsx
+import { createGridJsAdapter } from 'json-dynamic-viewer/adapters/gridjs';
+import mermaidTheme from 'json-dynamic-viewer/adapters/gridjs/themes/mermaid';
+
+const tableAdapter = createGridJsAdapter({ themes: [mermaidTheme] });
+```
+
+Omitting `plugins` (or passing `plugins={{}}`) uses the built-in native HTML table. To render arrays-of-objects as a list instead, set `behavior: BEHAVIORS.LIST` on that key in config.
+
+---
+
 ## `<JsonViewer>` props
 
 | Prop | Type | Default | Description |
@@ -338,6 +403,7 @@ Config keys for the nested viewer are stored as `"settings.connection.host"`, `"
 | `theme` | `string \| object` | `"default"` | Preset name (`"default"`, `"dark"`, `"ocean"`) or custom CSS-variable override object. |
 | `configurable` | `boolean` | `true` | Show/hide the configuration UI (behavior pickers, format gears, label editors). |
 | `path` | `string` | — | Mount path for nested viewers. When set inside a parent `JsonViewer`, inherits parent config and `configurable`. |
+| `plugins` | `object` | `{}` | Opt-in adapter plugins. Currently supports `plugins.table` — a table adapter instance created with `createTabulatorAdapter()` or `createGridJsAdapter()`. |
 
 ---
 
@@ -402,7 +468,7 @@ Behaviors control how **object and array values** are rendered. The user selects
 | `fields` | objects | Label/value grid |
 | `section` | objects | Collapsible accordion heading |
 | `list` | both | Vertical item list; objects show key as inline descriptor |
-| `table` | arrays | [Tabulator.js](https://tabulator.info) table with per-column format pickers |
+| `table` | arrays | Table rendering. Defaults to a plain HTML table; swap to a richer adapter via `plugins.table`. |
 | `string` | arrays | Comma-separated inline text |
 
 **Auto** mapping:
@@ -451,62 +517,165 @@ Numbers that fall within a valid Unix timestamp range (seconds: ~10 digits, mill
 
 ---
 
-## Table options
+## Table adapters
 
-When a key is rendered with the `table` behavior, extra settings are available in the toolbar and stored in config.
+Arrays-of-objects render as a table when the `table` behavior is active. By default the library renders a **plain HTML table** with no external dependencies. For richer tables (sorting, resizing, themes) install an optional adapter.
 
-### Pagination
+### Default: native HTML table
+
+No setup required. When `plugins.table` is omitted, arrays-of-objects render as a plain `<table>`. Column labels, value formats, and nested cells all work out of the box.
+
+```jsx
+import { JsonViewer } from 'json-dynamic-viewer';
+import 'json-dynamic-viewer/style.css';
+
+// arrays-of-objects → native HTML table, zero config
+export default function App() {
+  return <JsonViewer data={data} />;
+}
+```
+
+You can also reference the native adapter explicitly — for example to force it back when you have another adapter installed globally:
+
+```jsx
+import { JsonViewer, NativeTableAdapter } from 'json-dynamic-viewer';
+
+<JsonViewer data={data} plugins={{ table: NativeTableAdapter }} />
+```
+
+### Tabulator adapter
+
+```bash
+npm install tabulator-tables
+```
+
+```jsx
+import { JsonViewer, BEHAVIORS, setKeyConfig, createConfig } from 'json-dynamic-viewer';
+import { createTabulatorAdapter } from 'json-dynamic-viewer/adapters/tabulator';
+import simpleTheme   from 'json-dynamic-viewer/adapters/tabulator/themes/simple';
+import midnightTheme from 'json-dynamic-viewer/adapters/tabulator/themes/midnight';
+import 'json-dynamic-viewer/style.css';
+
+const tableAdapter = createTabulatorAdapter({
+  themes: [simpleTheme, midnightTheme],
+});
+
+export default function App() {
+  return (
+    <JsonViewer
+      data={data}
+      plugins={{ table: tableAdapter }}
+    />
+  );
+}
+```
+
+Available Tabulator themes (each is a separate import — only what you import is bundled):
+
+| Import path | `tableTheme` value | Description |
+|---|---|---|
+| `json-dynamic-viewer/adapters/tabulator/themes/simple`    | `'simple'`    | Clean, minimal borders |
+| `json-dynamic-viewer/adapters/tabulator/themes/midnight`  | `'midnight'`  | Dark background |
+| `json-dynamic-viewer/adapters/tabulator/themes/modern`    | `'modern'`    | Bold headers, alternating rows |
+| `json-dynamic-viewer/adapters/tabulator/themes/site`      | `'site'`      | Tabulator website style (light) |
+| `json-dynamic-viewer/adapters/tabulator/themes/site-dark` | `'site-dark'` | Tabulator website style (dark) |
+
+### Grid.js adapter
+
+```bash
+npm install gridjs gridjs-react
+```
+
+```jsx
+import { JsonViewer } from 'json-dynamic-viewer';
+import { createGridJsAdapter } from 'json-dynamic-viewer/adapters/gridjs';
+import mermaidTheme from 'json-dynamic-viewer/adapters/gridjs/themes/mermaid';
+import 'json-dynamic-viewer/style.css';
+
+const tableAdapter = createGridJsAdapter({
+  themes: [mermaidTheme],
+});
+
+export default function App() {
+  return (
+    <JsonViewer
+      data={data}
+      plugins={{ table: tableAdapter }}
+    />
+  );
+}
+```
+
+Available Grid.js themes:
+
+| Import path | `tableTheme` value | Description |
+|---|---|---|
+| `json-dynamic-viewer/adapters/gridjs/themes/mermaid` | `'mermaid'` | Grid.js mermaid theme |
+
+### Disabling table rendering entirely
+
+Pass `plugins={{}}` (or omit `plugins`) to use the default native table. If you want arrays-of-objects to render as a plain list instead, set the behavior explicitly:
+
+```js
+config = setKeyConfig(config, 'employees', { behavior: BEHAVIORS.LIST });
+```
+
+### Style picker
+
+The style picker (shown in the table toolbar when themes are imported) only appears on the **first table** on the page. Because Tabulator and Grid.js themes inject global CSS, the style is effectively shared across all tables — showing the picker only once communicates that clearly.
+
+Import zero themes → no style picker is shown at all.
+
+### Table config keys
+
+These config keys apply to the array key rendered as a table:
 
 | Config key | Type | Default | Description |
 |---|---|---|---|
-| `paginationSize` | `null \| 0 \| number` | `null` | `null` = auto-enable when >50 rows; `0` = always off; `N` = rows per page |
-| `paginationCounter` | `null \| 'rows' \| 'pages'` | `null` | Counter style shown next to pagination controls |
+| `paginationSize` | `null \| 0 \| number` | `null` | `null` = auto (paginate when >50 rows); `0` = no pagination; `N` = rows per page |
+| `paginationCounter` | `null \| 'rows' \| 'pages'` | `null` | Counter shown next to pagination controls (Tabulator only) |
+| `tableTheme` | `null \| string` | `null` | Theme name — must match one of the imported theme descriptors |
 
 ```js
 config = setKeyConfig(config, 'employees', {
   behavior:          BEHAVIORS.TABLE,
   paginationSize:    10,
   paginationCounter: 'rows',
+  tableTheme:        'midnight',
 });
 ```
-
-### Table theme (visual style)
-
-Tabulator ships several standard CSS themes. Set `tableTheme` on the array key to change the visual style:
-
-| Value | Description |
-|---|---|
-| `null` (default) | Tabulator base style |
-| `'simple'` | Clean, minimal borders |
-| `'midnight'` | Dark background |
-| `'modern'` | Bold headers, alternating rows |
-| `'site'` | Tabulator website style (light) |
-| `'site-dark'` | Tabulator website style (dark) |
-
-```js
-config = setKeyConfig(config, 'employees', {
-  behavior:    BEHAVIORS.TABLE,
-  tableTheme:  'midnight',
-});
-```
-
-Multiple tables on the same page can use different themes independently.
 
 ### Column alignment
 
-Set `hozAlign` on a **column key** (the child path, not the array key) to control horizontal text alignment inside that column. This can be done via the per-column settings panel in the table toolbar, or programmatically:
+Set `hozAlign` on a **column key** (the child path, not the array key) to control horizontal text alignment. Available in the per-column settings panel or programmatically:
 
 | Value | Description |
 |---|---|
-| `null` (default) | Tabulator default (left) |
+| `null` (default) | Adapter default (left) |
 | `'left'` | Left-aligned |
 | `'center'` | Centered |
 | `'right'` | Right-aligned |
 
 ```js
-// Align the 'salary' column to the right inside the 'employees' table
 config = setKeyConfig(config, 'employees.salary', { hozAlign: 'right' });
 config = setKeyConfig(config, 'employees.id',     { hozAlign: 'center' });
+```
+
+### Custom adapter
+
+Conform to this interface to build your own table renderer:
+
+```js
+const myAdapter = {
+  // React component receiving { node, path } props.
+  // Use useViewerContext() to access config, onConfigChange, and plugins.table.themes.
+  Component: MyTableComponent,
+
+  // Themes to offer in the style picker. Empty array = no picker shown.
+  themes: [],
+};
+
+<JsonViewer data={data} plugins={{ table: myAdapter }} />
 ```
 
 ---
@@ -637,4 +806,22 @@ import {
   // Themes
   themes,           // { default, dark, ocean }
 } from 'json-dynamic-viewer';
+
+// Built-in table adapter (no peer dep required — same as the default when plugins is omitted)
+import { NativeTableAdapter } from 'json-dynamic-viewer';
+
+// Optional richer table adapters — install the corresponding peer dep first
+import { createTabulatorAdapter, TabulatorAdapter } from 'json-dynamic-viewer/adapters/tabulator';
+import { createGridJsAdapter, GridJsAdapter }       from 'json-dynamic-viewer/adapters/gridjs';
+//   createXAdapter({ themes }) → { Component, themes }  — pass result to plugins.table
+//   XAdapter                  → zero-theme convenience instance
+
+// Table themes — each is a separate chunk; only what you import is bundled
+import simpleTheme   from 'json-dynamic-viewer/adapters/tabulator/themes/simple';
+import midnightTheme from 'json-dynamic-viewer/adapters/tabulator/themes/midnight';
+import modernTheme   from 'json-dynamic-viewer/adapters/tabulator/themes/modern';
+import siteTheme     from 'json-dynamic-viewer/adapters/tabulator/themes/site';
+import siteDarkTheme from 'json-dynamic-viewer/adapters/tabulator/themes/site-dark';
+
+import mermaidTheme  from 'json-dynamic-viewer/adapters/gridjs/themes/mermaid';
 ```

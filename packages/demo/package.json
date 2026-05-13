@@ -9,9 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "gridjs": "^6.2.0",
+    "gridjs-react": "^6.1.1",
     "json-dynamic-viewer": "*",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "tabulator-tables": "^6.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",

@@ -1,14 +1,36 @@
 {
   "name": "json-dynamic-viewer",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A dynamic, configurable JSON viewer library for React with per-key behavior and formatting",
   "type": "module",
-  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.js"
+    },
+    "./adapters/tabulator": {
+      "import": "./dist/adapters/tabulator.js"
+    },
+    "./adapters/tabulator/themes/simple": {
+      "import": "./dist/adapters/tabulator/themes/simple.js"
+    },
+    "./adapters/tabulator/themes/midnight": {
+      "import": "./dist/adapters/tabulator/themes/midnight.js"
+    },
+    "./adapters/tabulator/themes/modern": {
+      "import": "./dist/adapters/tabulator/themes/modern.js"
+    },
+    "./adapters/tabulator/themes/site": {
+      "import": "./dist/adapters/tabulator/themes/site.js"
+    },
+    "./adapters/tabulator/themes/site-dark": {
+      "import": "./dist/adapters/tabulator/themes/site-dark.js"
+    },
+    "./adapters/gridjs": {
+      "import": "./dist/adapters/gridjs.js"
+    },
+    "./adapters/gridjs/themes/mermaid": {
+      "import": "./dist/adapters/gridjs/themes/mermaid.js"
     },
     "./style.css": "./dist/style.css"
   },
@@ -33,7 +55,8 @@
     "viewer",
     "json-viewer",
     "dynamic",
-    "tabulator"
+    "plugin",
+    "adapter"
   ],
   "license": "MIT",
   "scripts": {
@@ -43,13 +66,27 @@
   },
   "peerDependencies": {
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react-dom": ">=18.0.0",
+    "tabulator-tables": ">=6.0.0",
+    "gridjs": ">=6.0.0",
+    "gridjs-react": ">=6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "tabulator-tables": {
+      "optional": true
+    },
+    "gridjs": {
+      "optional": true
+    },
+    "gridjs-react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
+    "gridjs": "^6.2.0",
+    "gridjs-react": "^6.1.1",
+    "tabulator-tables": "^6.3.0",
     "vite": "^8.0.12"
-  },
-  "dependencies": {
-    "tabulator-tables": "^6.3.0"
   }
 }

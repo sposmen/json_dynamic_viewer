@@ -305,6 +305,29 @@
 /* Nested viewer inside a Tabulator cell */
 .jdv-cell-node { padding: 2px 0; min-width: 120px; }
 
+/* ── Native HTML table (built-in default, no external deps) ──────────────── */
+.jdv-native-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  font-family: inherit;
+  margin: 4px 0;
+}
+.jdv-native-table th,
+.jdv-native-table td {
+  border: 1px solid var(--jdv-color-border);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.jdv-native-table th {
+  background: var(--jdv-color-hover);
+  color: var(--jdv-color-text-label);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.jdv-native-table tr:nth-child(even) td { background: var(--jdv-color-hover); }
+
 /* ── Table behavior ───────────────────────────────────────────────────────── */
 .jdv-table-wrapper { margin: 8px 0; }
 .jdv-table { }
