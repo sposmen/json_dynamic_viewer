@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useViewerContext } from '../ViewerContext.jsx';
 import { FORMATS, FORMATS_BY_TYPE, pathToClass } from '../../config.js';
-import StringValue, { isLikelyDate, isShortString } from './StringValue.jsx';
-import NumberValue from './NumberValue.jsx';
+import StringValue, { isLikelyDate, isLikelyDatetime, isShortString } from './StringValue.jsx';
+import NumberValue, { isLikelyTimestamp } from './NumberValue.jsx';
 import BooleanValue from './BooleanValue.jsx';
 
 function defaultFormat(value) {
   if (typeof value === 'boolean') return FORMATS.CHECKBOX;
-  if (typeof value === 'number')  return FORMATS.NUMBER;
-  if (typeof value === 'string')  return isLikelyDate(value) ? FORMATS.DATE : FORMATS.TEXT;
+  if (typeof value === 'number')  return isLikelyTimestamp(value) ? FORMATS.DATETIME : FORMATS.NUMBER;
+  if (typeof value === 'string') {
+    if (isLikelyDatetime(value)) return FORMATS.DATETIME;
+    if (isLikelyDate(value))     return FORMATS.DATE;
+    return FORMATS.TEXT;
+  }
   return null;
 }
 
@@ -50,6 +54,33 @@ function FormatOptions({ valueType, format, options, onChange }) {
           className="jdv-behavior-select"
           value={options.dateStyle ?? 'medium'}
           onChange={(e) => onChange({ ...options, dateStyle: e.target.value })}
+        >
+          {['full', 'long', 'medium', 'short'].map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </span>
+    );
+  }
+
+  if (format === FORMATS.DATETIME) {
+    return (
+      <span className="jdv-format-opts">
+        <select
+          className="jdv-behavior-select"
+          value={options.dateStyle ?? 'medium'}
+          onChange={(e) => onChange({ ...options, dateStyle: e.target.value })}
+          title="Date style"
+        >
+          {['full', 'long', 'medium', 'short'].map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <select
+          className="jdv-behavior-select"
+          value={options.timeStyle ?? 'short'}
+          onChange={(e) => onChange({ ...options, timeStyle: e.target.value })}
+          title="Time style"
         >
           {['full', 'long', 'medium', 'short'].map((s) => (
             <option key={s} value={s}>{s}</option>

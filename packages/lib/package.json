@@ -1,6 +1,6 @@
 {
   "name": "json-dynamic-viewer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A dynamic, configurable JSON viewer library for React with per-key behavior and formatting",
   "type": "module",
   "main": "./dist/index.cjs",

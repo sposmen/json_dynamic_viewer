@@ -18,14 +18,15 @@ export const BEHAVIORS = Object.freeze({
 /**
  * Format options for primitive values, grouped by detected JS type.
  *
- * string  → TEXT | DATE
- * number  → NUMBER | CURRENCY | PERCENTAGE
+ * string  → TEXT | DATE | DATETIME
+ * number  → NUMBER | CURRENCY | PERCENTAGE | DATE | DATETIME
  * boolean → CHECKBOX | TOGGLE | SWITCH
  */
 export const FORMATS = Object.freeze({
-  // string
+  // string / temporal
   TEXT:       'text',
   DATE:       'date',
+  DATETIME:   'datetime',
   // number
   NUMBER:     'number',
   CURRENCY:   'currency',
@@ -39,8 +40,8 @@ export const FORMATS = Object.freeze({
 });
 
 export const FORMATS_BY_TYPE = Object.freeze({
-  string:  [FORMATS.TEXT, FORMATS.DATE, FORMATS.NUMBER, FORMATS.CURRENCY, FORMATS.PERCENTAGE],
-  number:  [FORMATS.NUMBER, FORMATS.CURRENCY, FORMATS.PERCENTAGE],
+  string:  [FORMATS.TEXT, FORMATS.DATE, FORMATS.DATETIME, FORMATS.NUMBER, FORMATS.CURRENCY, FORMATS.PERCENTAGE],
+  number:  [FORMATS.NUMBER, FORMATS.CURRENCY, FORMATS.PERCENTAGE, FORMATS.DATE, FORMATS.DATETIME],
   boolean: [FORMATS.CHECKBOX, FORMATS.TOGGLE, FORMATS.SWITCH],
   array:   [FORMATS.CSV],
 });
@@ -62,9 +63,10 @@ export const FORMATS_BY_TYPE = Object.freeze({
  *         hozAlign?:          null|'left'|'center'|'right', // column horizontal alignment (table columns only)
  *         format?:            string,                // one of FORMATS (primitives)
  *         formatOptions?: {
- *           // date
+ *           // date / datetime
  *           dateStyle?: 'full'|'long'|'medium'|'short',
- *           // currency
+ *           timeStyle?: 'full'|'long'|'medium'|'short',  // datetime only
+ *           // currency / number
  *           locale?:    string,   // e.g. 'en-US'
  *           currency?:  string,   // e.g. 'USD'
  *           // percentage

@@ -420,22 +420,27 @@ Behaviors control how **object and array values** are rendered. The user selects
 A `⚙` icon appears on hover for any leaf value. Click it to change the display format.
 
 ### String
-| Format | Result | Options |
-|---|---|---|
-| `text` | Raw string | — |
-| `date` | `Intl.DateTimeFormat` | `dateStyle`, `locale` |
-| `number` | Parsed as number | — |
-| `currency` | `Intl.NumberFormat` | `currency`, `locale` |
-| `percentage` | Percent notation | `decimals`, `locale` |
+| Format | Result | Options | Auto-detected |
+|---|---|---|---|
+| `text` | Raw string | — | — |
+| `date` | `Intl.DateTimeFormat` (date only) | `dateStyle`, `locale` | Date-only strings e.g. `"1985-03-15"` |
+| `datetime` | `Intl.DateTimeFormat` (date + time) | `dateStyle`, `timeStyle`, `locale` | Strings with time component e.g. `"2024-11-05T09:42:00Z"` |
+| `number` | Parsed as number | — | — |
+| `currency` | `Intl.NumberFormat` | `currency`, `locale` | — |
+| `percentage` | Percent notation | `decimals`, `locale` | — |
 
-Strings that parse as a valid date are automatically suggested as `date`.
+Strings that parse as a valid date are automatically suggested as `date` or `datetime` based on whether a time component is present.
 
 ### Number
-| Format | Result | Options |
-|---|---|---|
-| `number` | Raw number | — |
-| `currency` | `Intl.NumberFormat` | `currency`, `locale` |
-| `percentage` | Percent notation | `decimals`, `locale` |
+| Format | Result | Options | Auto-detected |
+|---|---|---|---|
+| `number` | Raw number | — | — |
+| `currency` | `Intl.NumberFormat` | `currency`, `locale` | — |
+| `percentage` | Percent notation | `decimals`, `locale` | — |
+| `date` | `Intl.DateTimeFormat` (date only) | `dateStyle`, `locale` | — |
+| `datetime` | `Intl.DateTimeFormat` (date + time) | `dateStyle`, `timeStyle`, `locale` | Unix timestamps (seconds or ms) in 2001–2100 range |
+
+Numbers that fall within a valid Unix timestamp range (seconds: ~10 digits, milliseconds: ~13 digits, both within 2001–2100) are automatically suggested as `datetime`. The library auto-detects whether the value is in seconds or milliseconds.
 
 ### Boolean
 | Format | Result |
@@ -609,7 +614,7 @@ import {
   BEHAVIORS,        // { AUTO, SECTION, LIST, TABLE, FIELDS, STRING }
 
   // Formats
-  FORMATS,          // { TEXT, DATE, NUMBER, CURRENCY, PERCENTAGE,
+  FORMATS,          // { TEXT, DATE, DATETIME, NUMBER, CURRENCY, PERCENTAGE,
                     //   CHECKBOX, TOGGLE, SWITCH, CSV }
   FORMATS_BY_TYPE,  // { string: [...], number: [...], boolean: [...], array: [...] }
 

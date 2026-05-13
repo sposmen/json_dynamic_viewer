@@ -8,6 +8,12 @@ export function isLikelyDate(value) {
   return !isNaN(Date.parse(value));
 }
 
+// Returns true when the string has an explicit time component (ISO T or space-separated HH:MM)
+export function isLikelyDatetime(value) {
+  if (!isLikelyDate(value)) return false;
+  return /T\d{2}:\d{2}|^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(value);
+}
+
 export function isShortString(value) {
   return typeof value === 'string' && value.length <= SHORT_THRESHOLD;
 }
@@ -20,6 +26,16 @@ export default function StringValue({ value, format = FORMATS.TEXT, options = {}
     if (isNaN(d)) return <span className="jdv-type-string jdv-format-error">{value} (invalid date)</span>;
     const formatted = new Intl.DateTimeFormat(options.locale ?? 'default', {
       dateStyle: options.dateStyle ?? 'medium',
+    }).format(d);
+    return <span className="jdv-type-string jdv-format-date">{formatted}</span>;
+  }
+
+  if (format === FORMATS.DATETIME) {
+    const d = new Date(value);
+    if (isNaN(d)) return <span className="jdv-type-string jdv-format-error">{value} (invalid date)</span>;
+    const formatted = new Intl.DateTimeFormat(options.locale ?? 'default', {
+      dateStyle: options.dateStyle ?? 'medium',
+      timeStyle: options.timeStyle ?? 'short',
     }).format(d);
     return <span className="jdv-type-string jdv-format-date">{formatted}</span>;
   }
