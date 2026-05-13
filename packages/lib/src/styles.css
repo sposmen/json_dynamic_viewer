@@ -27,6 +27,8 @@
   background: var(--jdv-color-bg);
 }
 
+.jdv-nested-viewer { display: contents; }
+
 /* ── Node ─────────────────────────────────────────────────────────────────── */
 .jdv-node { margin: 2px 0; }
 .jdv-node-header { display: flex; align-items: center; gap: 6px; }
@@ -46,8 +48,9 @@
   border-radius: 3px;
   color: var(--jdv-color-text-muted);
   flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
 }
-.jdv-expand-btn:hover { background: var(--jdv-color-hover); }
+.jdv-expand-btn:hover { background: var(--jdv-color-hover); color: var(--jdv-color-text-label); }
 
 .jdv-node-meta { color: var(--jdv-color-text-muted); font-size: 11px; }
 
@@ -65,22 +68,41 @@
 .jdv-label-text { cursor: default; }
 .jdv-label-custom { color: var(--jdv-color-accent); font-style: italic; }
 
-.jdv-label-edit-btn {
+/* Shared base for inline icon action buttons (edit, hide) */
+.jdv-label-edit-btn,
+.jdv-label-hide-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--jdv-color-border);
-  padding: 0 2px;
+  padding: 1px 3px;
   line-height: 1;
+  border-radius: 3px;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
 }
+/* Reveal on row hover or when focused — use text-label for solid contrast across all themes */
 .jdv-node-header:hover .jdv-label-edit-btn,
 .jdv-field-row:hover .jdv-label-edit-btn,
 .jdv-section-header-row:hover .jdv-label-edit-btn,
 .jdv-col-setting-row:hover .jdv-label-edit-btn,
-.jdv-label-edit-btn:focus { opacity: 1; color: var(--jdv-color-text-muted); }
+.jdv-label-edit-btn:focus,
+.jdv-node-header:hover .jdv-label-hide-btn,
+.jdv-field-row:hover .jdv-label-hide-btn,
+.jdv-section-header-row:hover .jdv-label-hide-btn,
+.jdv-col-setting-row:hover .jdv-label-hide-btn,
+.jdv-label-hide-btn:focus {
+  opacity: 1;
+  color: var(--jdv-color-text-label);
+}
+/* Extra highlight on direct button hover to signal it's clickable */
+.jdv-label-edit-btn:hover,
+.jdv-label-hide-btn:hover {
+  color: var(--jdv-color-accent);
+  background: var(--jdv-color-hover);
+}
+.jdv-label-hide-btn--active { opacity: 1 !important; color: var(--jdv-color-accent) !important; }
 
 .jdv-label-input {
   font-family: inherit;
@@ -92,6 +114,13 @@
   background: var(--jdv-color-bg);
   color: var(--jdv-color-text);
   width: 140px;
+}
+
+/* ── Hidden value placeholder ─────────────────────────────────────────────── */
+.jdv-hidden-value {
+  color: var(--jdv-color-text-muted);
+  font-style: italic;
+  font-size: 11px;
 }
 
 /* ── Primitives ───────────────────────────────────────────────────────────── */
@@ -111,15 +140,17 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--jdv-color-border);
-  padding: 0 2px;
+  padding: 1px 3px;
   line-height: 1;
+  border-radius: 3px;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
 }
 .jdv-primitive-node:hover .jdv-format-gear,
-.jdv-format-gear--open { opacity: 1; color: var(--jdv-color-text-muted); }
+.jdv-format-gear--open { opacity: 1; color: var(--jdv-color-text-label); }
+.jdv-format-gear:hover  { color: var(--jdv-color-accent) !important; background: var(--jdv-color-hover); }
 
 .jdv-format-picker {
   display: inline-flex;
@@ -278,7 +309,13 @@
 .jdv-table-wrapper { margin: 8px 0; }
 .jdv-table { }
 
-.jdv-table-toolbar { margin-bottom: 4px; }
+.jdv-table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
 
 .jdv-table-settings-btn {
   background: var(--jdv-color-hover);
@@ -289,9 +326,31 @@
   font-family: inherit;
   cursor: pointer;
   color: var(--jdv-color-text-label);
+  transition: background 0.15s, color 0.15s;
 }
-.jdv-table-settings-btn:hover     { background: var(--jdv-color-border); }
+.jdv-table-settings-btn:hover     { background: var(--jdv-color-border); color: var(--jdv-color-text); }
 .jdv-table-settings-btn--open     { background: var(--jdv-color-hover); border-color: var(--jdv-color-accent); color: var(--jdv-color-accent); }
+
+.jdv-table-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--jdv-color-text-label);
+  border-left: 1px solid var(--jdv-color-border);
+  padding-left: 8px;
+}
+.jdv-table-pagination-controls label { display: flex; align-items: center; gap: 4px; }
+.jdv-table-pagination-select {
+  font-size: 11px;
+  font-family: inherit;
+  padding: 2px 4px;
+  border: 1px solid var(--jdv-color-border);
+  border-radius: 3px;
+  background: var(--jdv-color-bg);
+  color: var(--jdv-color-text-label);
+  cursor: pointer;
+}
 
 .jdv-col-settings {
   background: var(--jdv-color-hover);
@@ -303,7 +362,7 @@
 }
 .jdv-col-settings-header {
   display: grid;
-  grid-template-columns: 20px 140px 60px 100px 1fr;
+  grid-template-columns: 20px 140px 60px 100px 70px 1fr;
   gap: 6px;
   font-weight: bold;
   color: var(--jdv-color-text-muted);
@@ -313,7 +372,7 @@
 }
 .jdv-col-setting-row {
   display: grid;
-  grid-template-columns: 20px 140px 60px 100px 1fr;
+  grid-template-columns: 20px 140px 60px 100px 70px 1fr;
   gap: 6px;
   align-items: center;
   padding: 2px 0;
@@ -321,3 +380,27 @@
 .jdv-col-setting-row + .jdv-col-setting-row { border-top: 1px solid var(--jdv-color-border); }
 .jdv-col-setting-type  { color: var(--jdv-color-text-muted); font-style: italic; }
 .jdv-col-setting-opts  { display: flex; align-items: center; gap: 4px; }
+
+/* ── Column align toggle ──────────────────────────────────────────────────── */
+.jdv-align-toggle {
+  display: inline-flex;
+  border: 1px solid var(--jdv-color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.jdv-align-btn {
+  background: none;
+  border: none;
+  border-right: 1px solid var(--jdv-color-border);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  color: var(--jdv-color-text-muted);
+  font-family: inherit;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.jdv-align-btn:last-child { border-right: none; }
+.jdv-align-btn:hover { background: var(--jdv-color-hover); color: var(--jdv-color-text-label); }
+.jdv-align-btn--active { background: var(--jdv-color-accent); color: #fff; }
+.jdv-align-btn--active:hover { background: var(--jdv-color-accent); color: #fff; }

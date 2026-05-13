@@ -59,6 +59,7 @@ export default function Inspector({ payload }) {
     <JsonViewer
       data={payload}
       theme="dark"
+      configurable={false}
     />
   );
 }
@@ -245,6 +246,88 @@ console.log(map);
 
 ---
 
+### 7 — Per-key CSS targeting
+
+Every rendered node gets a path-derived CSS class and a `data-jdv-path` attribute so you can style specific keys from your own stylesheet.
+
+`pathToClass(path)` converts a dot-notation path to a valid CSS class:
+
+| Path | Class |
+|---|---|
+| `"company.name"` | `"jdv-key--company__name"` |
+| `"items[0].price"` | `"jdv-key--items-0__price"` |
+
+Both the class and `data-jdv-path` are applied to every element that visually represents a key: node containers, section wrappers, field rows, list items, and primitive value spans.
+
+```css
+/* Highlight a specific field label by class */
+.jdv-key--company__revenue .jdv-field-label {
+  color: #0a7;
+  font-weight: bold;
+}
+
+/* Target via data attribute — equivalent, attribute-based */
+[data-jdv-path="company.headquarters"] .jdv-field-label {
+  color: #07a;
+}
+
+/* Highlight an entire row */
+.jdv-key--company__active {
+  background: #fffbe6;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+```
+
+Use `pathToClass` from the library to generate class names programmatically:
+
+```js
+import { pathToClass } from 'json-dynamic-viewer';
+
+pathToClass('company.revenue')    // → "jdv-key--company__revenue"
+pathToClass('items[0].price')     // → "jdv-key--items-0__price"
+
+// Apply as a dynamic style rule:
+const rule = `.${pathToClass('company.revenue')} .jdv-field-label { color: green; }`;
+```
+
+---
+
+### 8 — Nested (recursive) JsonViewer
+
+When you embed a `<JsonViewer>` inside another viewer's render tree, pass the `path` prop to connect it. The nested viewer will:
+
+- Inherit the parent's `configurable` state
+- Use the parent's config object with path-prefixed keys
+- Route all config changes back to the parent
+
+```jsx
+import { JsonViewer } from 'json-dynamic-viewer';
+
+const outer = {
+  title: 'Dashboard',
+  settings: { theme: 'dark', lang: 'en' },
+};
+
+const inner = {
+  host: 'api.example.com',
+  port: 443,
+};
+
+export default function App() {
+  return (
+    <JsonViewer data={outer}>
+      {/* Rendered at path "settings.connection" in the outer config */}
+      <JsonViewer data={inner} path="settings.connection" />
+    </JsonViewer>
+  );
+}
+```
+
+Config keys for the nested viewer are stored as `"settings.connection.host"`, `"settings.connection.port"`, etc. inside the outer config — a single flat object covers the whole tree.
+
+---
+
 ## `<JsonViewer>` props
 
 | Prop | Type | Default | Description |
@@ -253,6 +336,8 @@ console.log(map);
 | `config` | `object` | internal | Controlled config. Requires `onConfigChange` when provided. |
 | `onConfigChange` | `(config) => void` | — | Called with the full updated config on every user interaction. |
 | `theme` | `string \| object` | `"default"` | Preset name (`"default"`, `"dark"`, `"ocean"`) or custom CSS-variable override object. |
+| `configurable` | `boolean` | `true` | Show/hide the configuration UI (behavior pickers, format gears, label editors). |
+| `path` | `string` | — | Mount path for nested viewers. When set inside a parent `JsonViewer`, inherits parent config and `configurable`. |
 
 ---
 
@@ -264,12 +349,21 @@ All display settings live in one flat, serializable object keyed by dot-notation
 {
   keys: {
     "order.items": {
-      label: "Line Items",           // renamed display label
-      behavior: "table",             // how to render non-primitive values
+      label:             "Line Items",    // renamed display label
+      behavior:          "table",         // how to render non-primitive values
+      collapsed:         false,           // initial collapsed state (sections)
+      hidden:            false,           // false | 'value' | true — see below
+      keyOrder:          ["name","id"],   // child key sort order (fields behavior)
+
+      // Table-specific
+      paginationSize:    25,              // null=auto (>50 rows), 0=off, N=rows/page
+      paginationCounter: "rows",          // null | 'rows' | 'pages'
+      tableTheme:        "midnight",      // null | 'simple' | 'midnight' | 'modern' | 'site' | 'site-dark'
+      hozAlign:          "left",          // null | 'left' | 'center' | 'right' (per column)
     },
     "order.total": {
-      format: "currency",            // how to format primitive values
-      formatOptions: { currency: "USD", locale: "en-US" },
+      format:            "currency",      // one of FORMATS
+      formatOptions:     { currency: "USD", locale: "en-US" },
     },
     "order.paid":  { format: "switch" },
     "order.date":  { format: "date", formatOptions: { dateStyle: "medium" } },
@@ -278,6 +372,23 @@ All display settings live in one flat, serializable object keyed by dot-notation
 ```
 
 Use `setKeyConfig(config, path, patch)` to update immutably. Use `exportConfig` / `importConfig` to serialize.
+
+### `hidden` option
+
+Controls the visibility of a key:
+
+| Value | Key visible | Value visible |
+|---|---|---|
+| `false` / not set | yes | yes |
+| `'value'` | yes | no — shows `[hidden]` placeholder |
+| `true` | no | no — entire row removed from DOM |
+
+In `configurable` mode, a `⊙` button appears on hover next to each label to toggle between visible and `'value'`. Setting `hidden: true` (full removal) is only available via the config object — there is no UI to restore a fully-hidden row.
+
+```js
+config = setKeyConfig(config, 'user.password', { hidden: true });     // entire row removed
+config = setKeyConfig(config, 'user.ssn',      { hidden: 'value' });  // label shows, value → [hidden]
+```
 
 ---
 
@@ -332,6 +443,120 @@ Strings that parse as a valid date are automatically suggested as `date`.
 | `checkbox` | Read-only native checkbox |
 | `toggle` | Yes / No pill (green / red) |
 | `switch` | CSS sliding switch |
+
+---
+
+## Table options
+
+When a key is rendered with the `table` behavior, extra settings are available in the toolbar and stored in config.
+
+### Pagination
+
+| Config key | Type | Default | Description |
+|---|---|---|---|
+| `paginationSize` | `null \| 0 \| number` | `null` | `null` = auto-enable when >50 rows; `0` = always off; `N` = rows per page |
+| `paginationCounter` | `null \| 'rows' \| 'pages'` | `null` | Counter style shown next to pagination controls |
+
+```js
+config = setKeyConfig(config, 'employees', {
+  behavior:          BEHAVIORS.TABLE,
+  paginationSize:    10,
+  paginationCounter: 'rows',
+});
+```
+
+### Table theme (visual style)
+
+Tabulator ships several standard CSS themes. Set `tableTheme` on the array key to change the visual style:
+
+| Value | Description |
+|---|---|
+| `null` (default) | Tabulator base style |
+| `'simple'` | Clean, minimal borders |
+| `'midnight'` | Dark background |
+| `'modern'` | Bold headers, alternating rows |
+| `'site'` | Tabulator website style (light) |
+| `'site-dark'` | Tabulator website style (dark) |
+
+```js
+config = setKeyConfig(config, 'employees', {
+  behavior:    BEHAVIORS.TABLE,
+  tableTheme:  'midnight',
+});
+```
+
+Multiple tables on the same page can use different themes independently.
+
+### Column alignment
+
+Set `hozAlign` on a **column key** (the child path, not the array key) to control horizontal text alignment inside that column. This can be done via the per-column settings panel in the table toolbar, or programmatically:
+
+| Value | Description |
+|---|---|
+| `null` (default) | Tabulator default (left) |
+| `'left'` | Left-aligned |
+| `'center'` | Centered |
+| `'right'` | Right-aligned |
+
+```js
+// Align the 'salary' column to the right inside the 'employees' table
+config = setKeyConfig(config, 'employees.salary', { hozAlign: 'right' });
+config = setKeyConfig(config, 'employees.id',     { hozAlign: 'center' });
+```
+
+---
+
+## Per-key CSS targeting
+
+Every rendered node receives:
+
+- A `jdv-key--<sanitized-path>` CSS class (via `pathToClass()`)
+- A `data-jdv-path="dot.notation.path"` attribute
+
+This lets you style individual keys from any external stylesheet without touching the config object.
+
+### Class name rules
+
+`pathToClass(path)` applies these transforms:
+
+1. `[N]` → `-N` (array index brackets become a dash-prefixed number)
+2. `.` → `__` (dots become double underscores)
+3. Non-alphanumeric/dash/underscore characters are removed
+
+```
+"company.name"     → "jdv-key--company__name"
+"items[0].price"   → "jdv-key--items-0__price"
+"a.b.c"            → "jdv-key--a__b__c"
+```
+
+### CSS examples
+
+```css
+/* Bold and green label for the revenue field */
+.jdv-key--company__revenue .jdv-field-label {
+  color: #0a7;
+  font-weight: bold;
+}
+
+/* Attribute selector — equivalent, more readable for deeply nested paths */
+[data-jdv-path="company.headquarters"] .jdv-field-label {
+  color: #07a;
+}
+
+/* Highlight an entire field row */
+.jdv-key--company__active {
+  background: #fffbe6;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+/* Style a table column header */
+.jdv-key--employees__salary .tabulator-col-title {
+  color: #c00;
+}
+```
+
+The demo app includes a live **Custom CSS** editor panel where you can try these selectors against the sample data in real time.
 
 ---
 
@@ -394,6 +619,9 @@ import {
   setKeyConfig,     // (config, path, patch) => new config
   exportConfig,     // (config) => JSON string
   importConfig,     // (jsonString) => config object
+
+  // CSS path utilities
+  pathToClass,      // (path) => "jdv-key--<sanitized>" CSS class name
 
   // Analysis
   preAnalyze,       // (node, maxDepth?) => flat dot-path map

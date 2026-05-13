@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { JsonViewer, exportConfig, importConfig, preAnalyze, themes } from 'json-dynamic-viewer';
 import { sampleJson } from './sampleData.js';
 
@@ -31,6 +31,65 @@ export default function App() {
   const [customVars, setCustomVars]   = useState({});
   const [showThemeEditor, setShowThemeEditor] = useState(false);
 
+  // Custom CSS editor
+  const [showCssEditor, setShowCssEditor] = useState(false);
+  const [customCss, setCustomCss] = useState(
+`/* Target a specific key by its generated class */
+.jdv-key--company__revenue .jdv-field-label {
+  color: #0a7;
+  font-weight: bold;
+}
+
+/* Target by data attribute */
+[data-jdv-path="company.headquarters"] .jdv-field-label {
+  color: #07a;
+}
+
+/* Highlight an entire field row */
+.jdv-key--company__active {
+  background: #fffbe6;
+  border-radius: 4px;
+  padding: 2px 4px;
+}`
+  );
+  const cssStyleRef = useRef(null);
+
+  useEffect(() => {
+    if (!cssStyleRef.current) {
+      cssStyleRef.current = document.createElement('style');
+      cssStyleRef.current.id = 'jdv-demo-custom-css';
+      document.head.appendChild(cssStyleRef.current);
+    }
+    cssStyleRef.current.textContent = customCss;
+    return () => cssStyleRef.current?.remove();
+  }, [customCss]);
+
+  // Resizable split pane
+  const [leftPct, setLeftPct] = useState(50);
+  const containerRef = useRef(null);
+  const dragging     = useRef(false);
+
+  function onDividerMouseDown(e) {
+    e.preventDefault();
+    dragging.current = true;
+
+    function onMouseMove(ev) {
+      if (!dragging.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct  = ((ev.clientX - rect.left) / rect.width) * 100;
+      setLeftPct(Math.max(20, Math.min(80, pct)));
+    }
+
+    function onMouseUp() {
+      dragging.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
   const theme = { ...themes[preset], ...customVars };
 
   function applyJson() {
@@ -39,6 +98,16 @@ export default function App() {
       setActiveJson(jsonInput);
       setParseError(null);
       setConfig(null);
+    } catch (e) {
+      setParseError(e.message);
+    }
+  }
+
+  function prettifyJson() {
+    try {
+      const parsed = JSON.parse(jsonInput);
+      setJsonInput(JSON.stringify(parsed, null, 2));
+      setParseError(null);
     } catch (e) {
       setParseError(e.message);
     }
@@ -109,145 +178,190 @@ export default function App() {
         </a>
       </div>
 
-    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden', background: panelBg }}>
+      {/* ── Main split pane ────────────────────────────────────────────── */}
+      <div ref={containerRef} style={{ flex: 1, display: 'flex', overflow: 'hidden', background: panelBg }}>
 
-      {/* ── Left: JSON input ───────────────────────────────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', borderRight: `1px solid ${panelBorder}` }}>
-        <div style={{ padding: '10px 14px', background: '#1e1e1e', color: '#fff', fontWeight: 'bold', fontSize: 13 }}>
-          JSON Input
-        </div>
-
-        <textarea
-          style={{
-            flex: 1, padding: 12, fontFamily: 'monospace', fontSize: 12,
-            border: 'none', resize: 'none', background: '#282828', color: '#d4d4d4', outline: 'none',
-          }}
-          value={jsonInput}
-          onChange={(e) => setJsonInput(e.target.value)}
-          spellCheck={false}
-        />
-
-        {parseError && (
-          <div style={{ background: '#fee', color: '#900', padding: '6px 12px', fontSize: 12 }}>
-            {parseError}
+        {/* ── Left: JSON input ─────────────────────────────────────────── */}
+        <div style={{ width: `${leftPct}%`, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ padding: '10px 14px', background: '#1e1e1e', color: '#fff', fontWeight: 'bold', fontSize: 13 }}>
+            JSON Input
           </div>
-        )}
 
-        <div style={{ display: 'flex', gap: 6, padding: '8px 10px', borderTop: `1px solid ${panelBorder}`, background: panelBg, flexWrap: 'wrap' }}>
-          <button onClick={applyJson}          style={btn('#0070f3')}>Apply JSON</button>
-          <button onClick={handleExportConfig} style={btn('#555')}>Export Config</button>
-          <label style={btn('#555', true)}>
-            Import Config <input type="file" accept=".json" hidden onChange={handleImportConfig} />
-          </label>
-          <button onClick={() => setShowAnalysis((s) => !s)} style={btn('#777')}>
-            {showAnalysis ? 'Hide' : 'Show'} Analysis
-          </button>
-          <button
-            onClick={() => setConfigurable((s) => !s)}
-            style={btn(configurable ? '#2a7a2a' : '#888')}
-            title="Toggle configuration UI visibility"
-          >
-            {configurable ? '⚙ Config on' : '⚙ Config off'}
-          </button>
-        </div>
-      </div>
+          <textarea
+            style={{
+              flex: 1, padding: 12, fontFamily: 'monospace', fontSize: 12,
+              border: 'none', resize: 'none', background: '#282828', color: '#d4d4d4', outline: 'none',
+            }}
+            value={jsonInput}
+            onChange={(e) => setJsonInput(e.target.value)}
+            spellCheck={false}
+          />
 
-      {/* ── Right: viewer + theme controls ────────────────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        {/* Theme bar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-          padding: '8px 12px', background: panelBg, borderBottom: `1px solid ${panelBorder}`,
-        }}>
-          <span style={{ fontSize: 11, color: panelText, fontWeight: 'bold', marginRight: 4 }}>Theme:</span>
-
-          {Object.keys(PRESET_LABELS).map((key) => (
-            <button
-              key={key}
-              onClick={() => { setPreset(key); resetCustomVars(); }}
-              style={{
-                ...btn(preset === key ? '#0070f3' : '#888'),
-                outline: preset === key ? '2px solid #0070f3' : 'none',
-                outlineOffset: 1,
-              }}
-            >
-              {PRESET_LABELS[key]}
-            </button>
-          ))}
-
-          <button onClick={() => setShowThemeEditor((s) => !s)} style={btn('#444')}>
-            {showThemeEditor ? '▲' : '▼'} Customize
-          </button>
-
-          {Object.keys(customVars).length > 0 && (
-            <button onClick={resetCustomVars} style={btn('#c00')}>Reset</button>
+          {parseError && (
+            <div style={{ background: '#fee', color: '#900', padding: '6px 12px', fontSize: 12 }}>
+              {parseError}
+            </div>
           )}
 
-          <button onClick={handleExportTheme} style={btn('#555')}>Export Theme</button>
+          <div style={{ display: 'flex', gap: 6, padding: '8px 10px', borderTop: `1px solid ${panelBorder}`, background: panelBg, flexWrap: 'wrap' }}>
+            <button onClick={applyJson}    style={btn('#0070f3')}>Apply JSON</button>
+            <button onClick={prettifyJson} style={btn('#444')}>Prettify</button>
+            <button onClick={handleExportConfig} style={btn('#555')}>Export Config</button>
+            <label style={btn('#555', true)}>
+              Import Config <input type="file" accept=".json" hidden onChange={handleImportConfig} />
+            </label>
+            <button onClick={() => setShowAnalysis((s) => !s)} style={btn('#777')}>
+              {showAnalysis ? 'Hide' : 'Show'} Analysis
+            </button>
+            <button
+              onClick={() => setConfigurable((s) => !s)}
+              style={btn(configurable ? '#2a7a2a' : '#888')}
+              title="Toggle configuration UI visibility"
+            >
+              {configurable ? '⚙ Config on' : '⚙ Config off'}
+            </button>
+            <button onClick={() => setShowCssEditor((s) => !s)} style={btn(showCssEditor ? '#5a3e9e' : '#666')}>
+              {showCssEditor ? '▲' : '▼'} Custom CSS
+            </button>
+          </div>
+
+          {showCssEditor && (
+            <div style={{ borderTop: `1px solid ${panelBorder}`, background: panelBg }}>
+              <div style={{ padding: '6px 10px 4px', fontSize: 11, color: panelText, fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Custom CSS — targets <code style={{ background: '#eee', padding: '1px 4px', borderRadius: 3, color: '#333' }}>.jdv-key--*</code> classes &amp; <code style={{ background: '#eee', padding: '1px 4px', borderRadius: 3, color: '#333' }}>[data-jdv-path]</code></span>
+              </div>
+              <textarea
+                value={customCss}
+                onChange={(e) => setCustomCss(e.target.value)}
+                spellCheck={false}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  height: 160, padding: '6px 10px',
+                  fontFamily: 'monospace', fontSize: 11,
+                  border: 'none', resize: 'vertical',
+                  background: '#1a1a2e', color: '#a9b7d0', outline: 'none',
+                }}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Custom var editor */}
-        {showThemeEditor && (
+        {/* ── Divider ──────────────────────────────────────────────────── */}
+        <div
+          onMouseDown={onDividerMouseDown}
+          style={{
+            width: 5,
+            flexShrink: 0,
+            cursor: 'col-resize',
+            background: panelBorder,
+            transition: 'background 0.15s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            userSelect: 'none',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = '#0070f3')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = panelBorder)}
+        >
+          <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.4)', borderRadius: 1 }} />
+        </div>
+
+        {/* ── Right: viewer + theme controls ───────────────────────────── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+
+          {/* Theme bar */}
           <div style={{
-            display: 'flex', flexWrap: 'wrap', gap: '8px 16px',
-            padding: '10px 14px', background: panelBg,
-            borderBottom: `1px solid ${panelBorder}`, fontSize: 11,
+            display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+            padding: '8px 12px', background: panelBg, borderBottom: `1px solid ${panelBorder}`,
           }}>
-            {CUSTOM_VARS.map(({ label, key }) => (
-              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 5, color: panelText }}>
-                <input
-                  type="color"
-                  value={customVars[key] ?? themes[preset]?.[key] ?? '#000000'}
-                  style={{ width: 26, height: 22, border: 'none', cursor: 'pointer', borderRadius: 3 }}
-                  onChange={(e) => setCustomVar(key, e.target.value)}
-                />
-                {label}
-              </label>
+            <span style={{ fontSize: 11, color: panelText, fontWeight: 'bold', marginRight: 4 }}>Theme:</span>
+
+            {Object.keys(PRESET_LABELS).map((key) => (
+              <button
+                key={key}
+                onClick={() => { setPreset(key); resetCustomVars(); }}
+                style={{
+                  ...btn(preset === key ? '#0070f3' : '#888'),
+                  outline: preset === key ? '2px solid #0070f3' : 'none',
+                  outlineOffset: 1,
+                }}
+              >
+                {PRESET_LABELS[key]}
+              </button>
             ))}
-          </div>
-        )}
 
-        {/* Pre-analysis panel */}
-        {showAnalysis && analysis && (
-          <div style={{
-            padding: 10, background: '#fffbe6', borderBottom: `1px solid #e8d`,
-            fontFamily: 'monospace', fontSize: 11, maxHeight: 180, overflowY: 'auto',
-          }}>
-            <strong>Pre-analysis:</strong>
-            <table style={{ borderCollapse: 'collapse', marginTop: 6, width: '100%' }}>
-              <thead>
-                <tr style={{ background: '#f5e6c8' }}>
-                  <th style={th}>Path</th>
-                  <th style={th}>Kind</th>
-                  <th style={th}>Suggested</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(analysis).map(([path, meta]) => (
-                  <tr key={path}>
-                    <td style={td}>{path}</td>
-                    <td style={td}>{meta.kind}</td>
-                    <td style={td}>{meta.suggestedBehavior}</td>
+            <button onClick={() => setShowThemeEditor((s) => !s)} style={btn('#444')}>
+              {showThemeEditor ? '▲' : '▼'} Customize
+            </button>
+
+            {Object.keys(customVars).length > 0 && (
+              <button onClick={resetCustomVars} style={btn('#c00')}>Reset</button>
+            )}
+
+            <button onClick={handleExportTheme} style={btn('#555')}>Export Theme</button>
+          </div>
+
+          {/* Custom var editor */}
+          {showThemeEditor && (
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: '8px 16px',
+              padding: '10px 14px', background: panelBg,
+              borderBottom: `1px solid ${panelBorder}`, fontSize: 11,
+            }}>
+              {CUSTOM_VARS.map(({ label, key }) => (
+                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 5, color: panelText }}>
+                  <input
+                    type="color"
+                    value={customVars[key] ?? themes[preset]?.[key] ?? '#000000'}
+                    style={{ width: 26, height: 22, border: 'none', cursor: 'pointer', borderRadius: 3 }}
+                    onChange={(e) => setCustomVar(key, e.target.value)}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* Pre-analysis panel */}
+          {showAnalysis && analysis && (
+            <div style={{
+              padding: 10, background: '#fffbe6', borderBottom: `1px solid #e8d`,
+              fontFamily: 'monospace', fontSize: 11, maxHeight: 180, overflowY: 'auto',
+            }}>
+              <strong>Pre-analysis:</strong>
+              <table style={{ borderCollapse: 'collapse', marginTop: 6, width: '100%' }}>
+                <thead>
+                  <tr style={{ background: '#f5e6c8' }}>
+                    <th style={th}>Path</th>
+                    <th style={th}>Kind</th>
+                    <th style={th}>Suggested</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {Object.entries(analysis).map(([path, meta]) => (
+                    <tr key={path}>
+                      <td style={td}>{path}</td>
+                      <td style={td}>{meta.kind}</td>
+                      <td style={td}>{meta.suggestedBehavior}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-        {/* Viewer */}
-        <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-          <JsonViewer
-            data={activeJson}
-            config={config}
-            onConfigChange={setConfig}
-            theme={theme}
-            configurable={configurable}
-          />
+          {/* Viewer */}
+          <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
+            <JsonViewer
+              data={activeJson}
+              config={config}
+              onConfigChange={setConfig}
+              theme={theme}
+              configurable={configurable}
+            />
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

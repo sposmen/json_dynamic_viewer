@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useViewerContext } from './ViewerContext.jsx';
-import { BEHAVIORS } from '../config.js';
+import { BEHAVIORS, pathToClass } from '../config.js';
 import { classifyValue, suggestBehavior } from '../analyzer.js';
 import ListBehavior from './behaviors/ListBehavior.jsx';
 import FieldsBehavior from './behaviors/FieldsBehavior.jsx';
@@ -19,14 +19,16 @@ export default function JsonNode({ value, path, keyName }) {
   const [expanded, setExpanded] = useState(false);
   const [resolvedBehavior, setResolvedBehavior] = useState(null);
 
+  const keyConfig = config.keys[path] ?? {};
   const kind = classifyValue(value);
+
+  if (keyConfig.hidden === true) return null;
 
   if (kind === 'primitive') {
     return <PrimitiveNode value={value} path={path} />;
   }
 
   const isArray = Array.isArray(value);
-  const keyConfig = config.keys[path] ?? {};
 
   const availableBehaviors = Object.values(BEHAVIORS).filter((b) => {
     if (b === BEHAVIORS.TABLE   && !isArray) return false;
@@ -56,11 +58,23 @@ export default function JsonNode({ value, path, keyName }) {
 
   const childCount = isArray ? value.length : Object.keys(value).length;
 
+  // Show key label with [hidden] placeholder — value is hidden but key is visible
+  if (keyConfig.hidden === 'value') {
+    return (
+      <div className={`jdv-node ${pathToClass(path)}`} data-jdv-path={path}>
+        <div className="jdv-node-header">
+          <EditableLabel path={path} fallback={keyName ?? path} />
+          <span className="jdv-hidden-value">[hidden]</span>
+        </div>
+      </div>
+    );
+  }
+
   // STRING: inline comma-separated, no expand step needed
   if (actualBehavior === BEHAVIORS.STRING) {
     const text = value.map(elementToString).join(', ');
     return (
-      <span className="jdv-string-array-node">
+      <span className={`jdv-string-array-node ${pathToClass(path)}`} data-jdv-path={path}>
         <span className="jdv-type-string jdv-string-array-value">{text}</span>
         {configurable && (
           <select className="jdv-behavior-select" value={effectiveBehavior} onChange={handleBehaviorChange}>
@@ -91,7 +105,7 @@ export default function JsonNode({ value, path, keyName }) {
 
   // Default: expand-button style
   return (
-    <div className="jdv-node">
+    <div className={`jdv-node ${pathToClass(path)}`} data-jdv-path={path}>
       <div className="jdv-node-header">
         <button
           className="jdv-expand-btn"

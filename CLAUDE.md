@@ -61,6 +61,27 @@ All per-key configuration lives in one flat object keyed by dot-notation path:
 
 Use `setKeyConfig(config, path, patch)` (immutable) to update. `exportConfig` / `importConfig` serialize to/from JSON string.
 
+#### `hidden` option
+
+Controls visibility of a key:
+
+| Value | Key visible | Value visible |
+|---|---|---|
+| `false` / not set | yes | yes |
+| `'value'` | yes | no — shows `[hidden]` |
+| `true` | no | no — entire row removed |
+
+```js
+{
+  keys: {
+    "user.password": { hidden: true },    // entire row invisible
+    "user.ssn":      { hidden: 'value' }, // label shows, value shows [hidden]
+  }
+}
+```
+
+In `configurable` mode, a `⊙` button appears on hover next to each label to toggle between visible and `hidden: 'value'`. Setting `hidden: true` (fully remove a row) is only available via the config object — there is no UI to restore a fully hidden row since it has no visible element to click.
+
 ### Primitive formatting
 
 Primitives render through `PrimitiveNode` → type-specific component. A `⚙` gear button (visible on hover) opens an inline format picker. Resetting format also clears `formatOptions`.
@@ -94,3 +115,21 @@ Primitives render through `PrimitiveNode` → type-specific component. A `⚙` g
 ### CSS conventions
 
 All library classes are prefixed `jdv-`. Styles live in `packages/lib/src/styles.css` and are imported by `JsonViewer.jsx` so they bundle into `dist/style.css`.
+
+#### Per-key CSS targeting
+
+Every rendered node gets a sanitized CSS class and a `data-jdv-path` attribute so consumers can style specific keys:
+
+```css
+/* class-based (use pathToClass() to generate) */
+.jdv-key--user__profile { border-left: 2px solid blue; }
+
+/* attribute-based */
+[data-jdv-path="company.revenue"] .jdv-field-label { color: green; }
+```
+
+`pathToClass(path)` (exported from the library) converts dot-notation paths to valid CSS class names:
+- `"company.name"` → `"jdv-key--company__name"`
+- `"items[0].price"` → `"jdv-key--items-0__price"`
+
+The class and `data-jdv-path` attribute are applied to every element that visually represents a key: node containers, section wrappers, field rows, list items, and primitive value spans.

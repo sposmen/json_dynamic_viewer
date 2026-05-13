@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useViewerContext } from '../ViewerContext.jsx';
-import { BEHAVIORS, applySortOrder } from '../../config.js';
+import { BEHAVIORS, applySortOrder, pathToClass } from '../../config.js';
 import { classifyValue } from '../../analyzer.js';
 import EditableLabel from '../EditableLabel.jsx';
 import TableBehavior from './TableBehavior.jsx';
@@ -30,7 +30,7 @@ export default function SectionBehavior({
   }
 
   return (
-    <div className="jdv-section">
+    <div className={`jdv-section ${pathToClass(path)}`} data-jdv-path={path}>
       <div className="jdv-section-header-row">
         <button className="jdv-section-toggle" onClick={() => setCollapsed((s) => !s)}>
           <span className="jdv-section-arrow">{collapsed ? '▶' : '▼'}</span>
@@ -62,19 +62,28 @@ export default function SectionBehavior({
             sortedKeys.map((key, i) => {
               const val = node[key];
               const childPath = path ? `${path}.${key}` : key;
+              const hidden = config.keys[childPath]?.hidden;
+              if (hidden === true) return null;
               const isPrimitive = classifyValue(val) === 'primitive';
               return (
-                <div key={key} className={isPrimitive ? 'jdv-section-primitive-row' : 'jdv-section-node-row'}>
+                <div
+                  key={key}
+                  className={`${isPrimitive ? 'jdv-section-primitive-row' : 'jdv-section-node-row'} ${pathToClass(childPath)}`}
+                  data-jdv-path={childPath}
+                >
                   {configurable && (
                     <span className="jdv-sort-btns">
                       <button className="jdv-sort-btn" onClick={() => moveKey(key, -1)} disabled={i === 0}>↑</button>
                       <button className="jdv-sort-btn" onClick={() => moveKey(key,  1)} disabled={i === sortedKeys.length - 1}>↓</button>
                     </span>
                   )}
-                  {isPrimitive && (
+                  {(isPrimitive || hidden === 'value') && (
                     <EditableLabel path={childPath} fallback={key} className="jdv-section-field-label" />
                   )}
-                  {renderNode(val, childPath)}
+                  {hidden === 'value'
+                    ? <span className="jdv-hidden-value">[hidden]</span>
+                    : renderNode(val, childPath)
+                  }
                 </div>
               );
             })

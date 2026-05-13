@@ -1,14 +1,18 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { ViewerContext } from './ViewerContext.jsx';
 import JsonNode from './JsonNode.jsx';
 import { createConfig, setKeyConfig } from '../config.js';
 import { themes } from '../themes.js';
 import '../styles.css';
 
-export default function JsonViewer({ data, config: externalConfig, onConfigChange, theme, configurable = true }) {
+export default function JsonViewer({ data, config: externalConfig, onConfigChange, theme, configurable = true, path: pathPrefix }) {
+  const parentCtx = useContext(ViewerContext);
+  const isConnected = Boolean(parentCtx && pathPrefix !== undefined);
+
   const [internalConfig, setInternalConfig] = useState(() => createConfig());
 
-  const config = externalConfig ?? internalConfig;
+  const config = isConnected ? parentCtx.config : (externalConfig ?? internalConfig);
+  const effectiveConfigurable = isConnected ? parentCtx.configurable : configurable;
 
   const parsed = useMemo(() => {
     if (typeof data === 'string') {
@@ -19,13 +23,17 @@ export default function JsonViewer({ data, config: externalConfig, onConfigChang
   }, [data]);
 
   const handleConfigChange = useCallback((path, patch) => {
-    const next = setKeyConfig(config, path, patch);
-    if (onConfigChange) {
-      onConfigChange(next);
+    if (isConnected) {
+      parentCtx.onConfigChange(path, patch);
     } else {
-      setInternalConfig(next);
+      const next = setKeyConfig(config, path, patch);
+      if (onConfigChange) {
+        onConfigChange(next);
+      } else {
+        setInternalConfig(next);
+      }
     }
-  }, [config, onConfigChange]);
+  }, [isConnected, parentCtx, config, onConfigChange]);
 
   const renderNode = useCallback((value, path) => (
     <JsonNode value={value} path={path} keyName={path.split('.').pop()} />
@@ -33,25 +41,35 @@ export default function JsonViewer({ data, config: externalConfig, onConfigChang
 
   const ctx = useMemo(() => ({
     config,
-    configurable,
+    configurable: effectiveConfigurable,
     onConfigChange: handleConfigChange,
     renderNode,
-  }), [config, configurable, handleConfigChange, renderNode]);
+  }), [config, effectiveConfigurable, handleConfigChange, renderNode]);
 
   const themeVars = useMemo(() => {
     if (!theme) return {};
     return typeof theme === 'string' ? (themes[theme] ?? {}) : theme;
   }, [theme]);
 
+  const nodes = typeof parsed === 'object' && parsed !== null
+    ? Object.entries(parsed).map(([key, value]) => {
+        const nodePath = isConnected ? `${pathPrefix}.${key}` : key;
+        return <JsonNode key={key} value={value} path={nodePath} keyName={key} />;
+      })
+    : <span className="jdv-primitive">{String(parsed)}</span>;
+
+  if (isConnected) {
+    return (
+      <ViewerContext.Provider value={ctx}>
+        <div className="jdv-nested-viewer">{nodes}</div>
+      </ViewerContext.Provider>
+    );
+  }
+
   return (
     <ViewerContext.Provider value={ctx}>
       <div className="jdv-root" style={themeVars}>
-        {typeof parsed === 'object' && parsed !== null
-          ? Object.entries(parsed).map(([key, value]) => (
-              <JsonNode key={key} value={value} path={key} keyName={key} />
-            ))
-          : <span className="jdv-primitive">{String(parsed)}</span>
-        }
+        {nodes}
       </div>
     </ViewerContext.Provider>
   );

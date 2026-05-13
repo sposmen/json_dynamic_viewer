@@ -52,10 +52,15 @@ export const FORMATS_BY_TYPE = Object.freeze({
  *   {
  *     keys: {
  *       "dot.notation.path": {
- *         label?:         string,   // display name override
- *         behavior?:      string,   // one of BEHAVIORS (non-primitives)
- *         collapsed?:     boolean,  // initial collapsed state
- *         format?:        string,   // one of FORMATS (primitives)
+ *         label?:         string,            // display name override
+ *         behavior?:      string,            // one of BEHAVIORS (non-primitives)
+ *         collapsed?:     boolean,           // initial collapsed state
+ *         hidden?:            false|'value'|true,    // false=visible; 'value'=show key, hide content; true=hide entirely
+ *         paginationSize?:    null|0|number,         // null=auto (on if >50 rows), 0=off, N=rows per page (tables only)
+ *         paginationCounter?: null|'rows'|'pages',   // row/page counter style (tables only)
+ *         tableTheme?:        null|'simple'|'midnight'|'modern'|'site'|'site-dark', // Tabulator CSS theme (tables only)
+ *         hozAlign?:          null|'left'|'center'|'right', // column horizontal alignment (table columns only)
+ *         format?:            string,                // one of FORMATS (primitives)
  *         formatOptions?: {
  *           // date
  *           dateStyle?: 'full'|'long'|'medium'|'short',
@@ -95,6 +100,18 @@ export function applySortOrder(keys, keyOrder) {
   const inOrder = keyOrder.filter((k) => keys.includes(k));
   const rest    = keys.filter((k) => !keyOrder.includes(k));
   return [...inOrder, ...rest];
+}
+
+/**
+ * Converts a dot-notation path to a valid CSS class segment.
+ * "company.items[0].name" → "jdv-key--company__items-0__name"
+ */
+export function pathToClass(path) {
+  const sanitized = path
+    .replace(/\[(\d+)\]/g, '-$1')
+    .replace(/\./g, '__')
+    .replace(/[^a-zA-Z0-9_-]/g, '');
+  return 'jdv-key--' + sanitized;
 }
 
 export function exportConfig(config) {

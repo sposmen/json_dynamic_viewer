@@ -10,6 +10,7 @@ export default function EditableLabel({ path, fallback, className = '' }) {
   const saved = config.keys[path]?.label;
   const label = saved || fallback;
   const isCustom = Boolean(saved);
+  const hidden = config.keys[path]?.hidden;
 
   function startEdit(e) {
     e.stopPropagation();
@@ -31,6 +32,11 @@ export default function EditableLabel({ path, fallback, className = '' }) {
     if (e.key === 'Enter')  { e.preventDefault(); commit(); }
     if (e.key === 'Escape') { setEditing(false); }
     e.stopPropagation();
+  }
+
+  function toggleHidden(e) {
+    e.stopPropagation();
+    onConfigChange(path, { hidden: hidden === 'value' ? null : 'value' });
   }
 
   if (!configurable) {
@@ -59,6 +65,13 @@ export default function EditableLabel({ path, fallback, className = '' }) {
     <span className={`jdv-editable-label ${className}`}>
       <span className={`jdv-label-text ${isCustom ? 'jdv-label-custom' : ''}`}>{label}</span>
       <button className="jdv-label-edit-btn" onClick={startEdit} title="Rename key">✏</button>
+      <button
+        className={`jdv-label-hide-btn${hidden === 'value' ? ' jdv-label-hide-btn--active' : ''}`}
+        onClick={toggleHidden}
+        title={hidden === 'value' ? 'Show value' : 'Hide value'}
+      >
+        ⊙
+      </button>
     </span>
   );
 }

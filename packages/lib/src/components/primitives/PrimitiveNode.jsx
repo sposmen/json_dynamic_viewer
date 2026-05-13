@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useViewerContext } from '../ViewerContext.jsx';
-import { FORMATS, FORMATS_BY_TYPE } from '../../config.js';
+import { FORMATS, FORMATS_BY_TYPE, pathToClass } from '../../config.js';
 import StringValue, { isLikelyDate, isShortString } from './StringValue.jsx';
 import NumberValue from './NumberValue.jsx';
 import BooleanValue from './BooleanValue.jsx';
@@ -103,8 +103,16 @@ export default function PrimitiveNode({ value, path }) {
     onConfigChange(path, { formatOptions: nextOptions });
   }
 
+  if (keyConfig.hidden === 'value') {
+    return (
+      <span className={`jdv-primitive-node ${pathToClass(path)}`} data-jdv-path={path}>
+        <span className="jdv-hidden-value">[hidden]</span>
+      </span>
+    );
+  }
+
   return (
-    <span className="jdv-primitive-node">
+    <span className={`jdv-primitive-node ${pathToClass(path)}`} data-jdv-path={path}>
       <FormattedValue value={value} format={format} options={formatOptions} />
 
       {configurable && canFormat && (

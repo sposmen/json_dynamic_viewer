@@ -2,12 +2,58 @@ import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
+// Additional themes imported as inline strings so they can be injected dynamically
+import simpleCss    from 'tabulator-tables/dist/css/tabulator_simple.min.css?inline';
+import midnightCss  from 'tabulator-tables/dist/css/tabulator_midnight.min.css?inline';
+import modernCss    from 'tabulator-tables/dist/css/tabulator_modern.min.css?inline';
+import siteCss      from 'tabulator-tables/dist/css/tabulator_site.min.css?inline';
+import siteDarkCss  from 'tabulator-tables/dist/css/tabulator_site_dark.min.css?inline';
 import { useViewerContext, ViewerContext } from '../ViewerContext.jsx';
 import { BEHAVIORS, FORMATS, FORMATS_BY_TYPE, applySortOrder } from '../../config.js';
 import { suggestBehavior } from '../../analyzer.js';
 import EditableLabel from '../EditableLabel.jsx';
 import FieldsBehavior from './FieldsBehavior.jsx';
 import ListBehavior from './ListBehavior.jsx';
+
+// ── Theme management ─────────────────────────────────────────────────────────
+
+const THEME_STYLE_ID = 'jdv-tabulator-theme-override';
+
+const THEME_CSS_MAP = {
+  simple:    simpleCss,
+  midnight:  midnightCss,
+  modern:    modernCss,
+  site:      siteCss,
+  'site-dark': siteDarkCss,
+};
+
+export const TABLE_THEME_OPTIONS = [
+  { label: 'None',      value: '' },
+  { label: 'Simple',    value: 'simple' },
+  { label: 'Midnight',  value: 'midnight' },
+  { label: 'Modern',    value: 'modern' },
+  { label: 'Site',      value: 'site' },
+  { label: 'Site Dark', value: 'site-dark' },
+];
+
+// Module-level instance counter so the style element is only removed
+// when the last TableBehavior unmounts.
+let _tabulatorThemeRefs = 0;
+
+function applyTabulatorTheme(theme) {
+  const css = THEME_CSS_MAP[theme] ?? '';
+  let el = document.getElementById(THEME_STYLE_ID);
+  if (css) {
+    if (!el) {
+      el = document.createElement('style');
+      el.id = THEME_STYLE_ID;
+      document.head.appendChild(el);
+    }
+    el.textContent = css;
+  } else if (el) {
+    el.textContent = '';
+  }
+}
 
 // ── Primitive / CSV formatting ───────────────────────────────────────────────
 
@@ -83,7 +129,7 @@ function buildColumns(rows, config, path, contextRef, cellItemsRef, tableRef) {
     const opts    = kc.formatOptions ?? {};
     const hasNested = columnHasNested(rows, key);
 
-    const col = { title: kc.label ?? key, field: key, resizable: true };
+    const col = { title: kc.label ?? key, field: key, resizable: true, hozAlign: kc.hozAlign || undefined };
 
     if (hasNested) {
       col.formatter = (cell, _params, onRendered) => {
@@ -197,7 +243,7 @@ function ColumnSettings({ rows, path, config, onConfigChange }) {
     <div className="jdv-col-settings">
       <div className="jdv-col-settings-header">
         <span />
-        <span>Column</span><span>Type</span><span>Format</span><span>Options</span>
+        <span>Column</span><span>Type</span><span>Format</span><span>Align</span><span>Options</span>
       </div>
       {keys.map((key, i) => {
         const colPath      = path ? `${path}.${key}` : key;
@@ -206,6 +252,7 @@ function ColumnSettings({ rows, path, config, onConfigChange }) {
         const formats      = FORMATS_BY_TYPE[detectedType] ?? [];
         const currentFmt   = kc.format ?? '';
         const fmtOpts      = kc.formatOptions ?? {};
+        const currentAlign = kc.hozAlign ?? '';
 
         return (
           <div key={key} className="jdv-col-setting-row">
@@ -234,6 +281,19 @@ function ColumnSettings({ rows, path, config, onConfigChange }) {
               <span style={{ color: 'var(--jdv-color-text-muted)', fontSize: 11 }}>—</span>
             )}
 
+            <span className="jdv-align-toggle">
+              {[['left','←'],['center','≡'],['right','→']].map(([align, icon]) => (
+                <button
+                  key={align}
+                  className={`jdv-align-btn${currentAlign === align ? ' jdv-align-btn--active' : ''}`}
+                  onClick={() => onConfigChange(colPath, { hozAlign: currentAlign === align ? null : align })}
+                  title={align}
+                >
+                  {icon}
+                </button>
+              ))}
+            </span>
+
             <span className="jdv-col-setting-opts">
               <FormatExtraOptions format={currentFmt} options={fmtOpts}
                 onChange={(next) => onConfigChange(colPath, { formatOptions: next })} />
@@ -254,6 +314,22 @@ function cleanupCellItems(items) {
   });
 }
 
+const PAGE_SIZE_OPTIONS = [
+  { label: 'Auto',  value: '' },
+  { label: 'All',   value: '0' },
+  { label: '10',    value: '10' },
+  { label: '25',    value: '25' },
+  { label: '50',    value: '50' },
+  { label: '100',   value: '100' },
+  { label: '250',   value: '250' },
+];
+
+const COUNTER_OPTIONS = [
+  { label: 'None',  value: '' },
+  { label: 'Rows',  value: 'rows' },
+  { label: 'Pages', value: 'pages' },
+];
+
 export default function TableBehavior({ node, path }) {
   const ctx = useViewerContext();
   const { config, configurable, onConfigChange } = ctx;
@@ -265,18 +341,43 @@ export default function TableBehavior({ node, path }) {
 
   useEffect(() => { contextRef.current = ctx; });
 
+  // Apply selected Tabulator theme CSS override; clean up when last instance unmounts
+  const tableTheme = config.keys[path]?.tableTheme ?? '';
+  useEffect(() => {
+    _tabulatorThemeRefs++;
+    return () => {
+      _tabulatorThemeRefs--;
+      if (_tabulatorThemeRefs === 0) {
+        const el = document.getElementById(THEME_STYLE_ID);
+        if (el) el.textContent = '';
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    applyTabulatorTheme(tableTheme);
+  }, [tableTheme]);
+
   useEffect(() => {
     if (!containerRef.current) return;
 
     cleanupCellItems(cellItemsRef.current);
     cellItemsRef.current = [];
 
+    const kc = config.keys[path] ?? {};
+    // paginationSize: null/undefined = auto (on if >50 rows), 0 = off, N = on with N rows
+    const rawSize  = kc.paginationSize;
+    const pageSize = (rawSize == null || rawSize === 0) ? 50 : rawSize;
+    const paginate = rawSize == null ? node.length > 50 : rawSize > 0;
+    const counter  = kc.paginationCounter || false;
+
     tableRef.current = new Tabulator(containerRef.current, {
       data: node,
       columns: buildColumns(node, config, path, contextRef, cellItemsRef, tableRef),
       layout: 'fitDataStretch',
-      pagination: node.length > 50 ? 'local' : false,
-      paginationSize: 50,
+      pagination: paginate ? 'local' : false,
+      paginationSize: pageSize,
+      paginationCounter: counter,
       movableColumns: true,
     });
 
@@ -288,6 +389,23 @@ export default function TableBehavior({ node, path }) {
     };
   }, [node, config, path]);
 
+  const kc           = config.keys[path] ?? {};
+  const pageSizeValue = kc.paginationSize == null ? '' : String(kc.paginationSize);
+  const counterValue  = kc.paginationCounter ?? '';
+
+  function handlePageSizeChange(e) {
+    const raw = e.target.value;
+    onConfigChange(path, { paginationSize: raw === '' ? null : Number(raw) });
+  }
+
+  function handleCounterChange(e) {
+    onConfigChange(path, { paginationCounter: e.target.value || null });
+  }
+
+  function handleThemeChange(e) {
+    onConfigChange(path, { tableTheme: e.target.value || null });
+  }
+
   return (
     <div className="jdv-table-wrapper">
       {configurable && (
@@ -298,6 +416,49 @@ export default function TableBehavior({ node, path }) {
           >
             ⚙ Columns
           </button>
+
+          <div className="jdv-table-pagination-controls">
+            <label>
+              Rows/page:
+              <select
+                className="jdv-table-pagination-select"
+                value={pageSizeValue}
+                onChange={handlePageSizeChange}
+              >
+                {PAGE_SIZE_OPTIONS.map(({ label, value }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Counter:
+              <select
+                className="jdv-table-pagination-select"
+                value={counterValue}
+                onChange={handleCounterChange}
+              >
+                {COUNTER_OPTIONS.map(({ label, value }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="jdv-table-pagination-controls">
+            <label>
+              Style:
+              <select
+                className="jdv-table-pagination-select"
+                value={tableTheme}
+                onChange={handleThemeChange}
+              >
+                {TABLE_THEME_OPTIONS.map(({ label, value }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
       )}
 

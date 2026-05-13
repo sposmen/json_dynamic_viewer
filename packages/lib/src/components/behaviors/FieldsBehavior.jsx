@@ -1,6 +1,6 @@
 import { useViewerContext } from '../ViewerContext.jsx';
 import EditableLabel from '../EditableLabel.jsx';
-import { applySortOrder } from '../../config.js';
+import { applySortOrder, pathToClass } from '../../config.js';
 
 export default function FieldsBehavior({ node, path }) {
   const { config, configurable, onConfigChange, renderNode } = useViewerContext();
@@ -20,8 +20,10 @@ export default function FieldsBehavior({ node, path }) {
     <div className={`jdv-fields${configurable ? ' jdv-fields--sortable' : ''}`}>
       {sortedKeys.map((key, i) => {
         const childPath = path ? `${path}.${key}` : key;
+        const hidden = config.keys[childPath]?.hidden;
+        if (hidden === true) return null;
         return (
-          <div key={key} className="jdv-field-row">
+          <div key={key} className={`jdv-field-row ${pathToClass(childPath)}`} data-jdv-path={childPath}>
             {configurable && (
               <span className="jdv-sort-btns">
                 <button className="jdv-sort-btn" onClick={() => moveKey(key, -1)} disabled={i === 0}>↑</button>
@@ -29,7 +31,12 @@ export default function FieldsBehavior({ node, path }) {
               </span>
             )}
             <EditableLabel path={childPath} fallback={key} className="jdv-field-label" />
-            <span className="jdv-field-value">{renderNode(node[key], childPath)}</span>
+            <span className="jdv-field-value">
+              {hidden === 'value'
+                ? <span className="jdv-hidden-value">[hidden]</span>
+                : renderNode(node[key], childPath)
+              }
+            </span>
           </div>
         );
       })}
